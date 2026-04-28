@@ -2,8 +2,7 @@ ARG CADDY_VERSION=2.10.2
 
 FROM caddy:${CADDY_VERSION}-builder AS builder
 
-RUN xcaddy build \
-    --with github.com/caddy-dns/cloudflare
+RUN xcaddy build
 
 FROM alpine:3.22
 

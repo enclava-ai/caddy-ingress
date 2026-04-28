@@ -5,7 +5,10 @@ IMAGE="${1:-caddy-ingress:local}"
 
 docker build -t "$IMAGE" .
 
-docker run --rm "$IMAGE" caddy list-modules | grep -F "dns.providers.cloudflare"
+if docker run --rm "$IMAGE" caddy list-modules | grep -F "dns.providers.cloudflare"; then
+  echo "Cloudflare DNS module must not be present in the TLS-ALPN-only image" >&2
+  exit 1
+fi
 docker run --rm "$IMAGE" sh -eu -c '
   command -v caddy
   command -v cryptsetup
@@ -23,13 +26,14 @@ cat > "$tmpdir/Caddyfile" <<'CADDY'
 
 example.enclava.dev {
   tls {
-    dns cloudflare {env.CF_API_TOKEN}
+    issuer acme {
+      disable_http_challenge
+    }
   }
   respond "ok"
 }
 CADDY
 
 docker run --rm \
-  -e CF_API_TOKEN=0123456789abcdef0123456789abcdef01234567 \
   -v "$tmpdir/Caddyfile:/etc/caddy/Caddyfile:ro" \
   "$IMAGE" caddy validate --config /etc/caddy/Caddyfile
