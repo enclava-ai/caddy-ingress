@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
       packages: write
 
     steps:
@@ -38,6 +39,7 @@ jobs:
             type=sha,prefix=
 
       - name: Build and maybe push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -48,3 +50,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: true
+
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign pushed digest
+        if: github.event_name != 'pull_request'
+        env:
+          IMAGE: ghcr.io/enclava-ai/caddy-ingress
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes "${IMAGE}@${DIGEST}"
